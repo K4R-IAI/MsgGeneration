@@ -1,0 +1,3 @@
+std_msgs/String MyString
+string MyOtherString
+uint32 SomeNumber
