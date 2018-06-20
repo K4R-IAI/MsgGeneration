@@ -96,7 +96,12 @@ def GenIncludes(Variables):
 
 
 def GenNameSpace(Name):
-    NameSpace = ['\nnamespace ' + Name.split('/')[0] + '\n']
+    Line = ''
+    for dirs in Name.split('/')[:-1]:
+        Line = Line + dirs + '/'
+    Line = Line[:-1]
+    NameSpace = ['\nnamespace ' + Line + '\n']
+    
     NameSpace.append('{\n')
     return NameSpace
 
@@ -264,10 +269,8 @@ for root, dirs, files in os.walk(dirname):
             MsgContent = MsgFile.readlines()
             MsgContent = RemoveParagraphs(MsgContent)
             MsgName = MsgFile.name.split('.')[0].split('/')[-1]
-            print(MsgName)
             MsgFileName = MsgFile.name
             MsgFileName = MsgFileName.replace(dirname + '/', '')
-            print(MsgFileName)
             MsgFile.close()
             Variables = MakeReadableArray(MsgContent)
 
