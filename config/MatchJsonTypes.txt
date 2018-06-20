@@ -1,0 +1,13 @@
+int8 NumberField
+int16 NumberField
+int32 NumberField
+int64 NumberField
+uint8 NumberField
+uint16 NumberField
+uint32 NumberField
+uint64 NumberField
+bool BoolField
+float NumberField
+double NumberField
+FRosTime ObjectField
+FString StringField

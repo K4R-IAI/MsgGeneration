@@ -1,5 +1,7 @@
 import numpy as np
 import os
+import tkinter as tk
+from tkinter import filedialog
 
 def RemoveParagraphs(RawDocument):
     CleanedArray = []
@@ -21,11 +23,11 @@ def Indent(Array, Count):
 
     return IndentedArray  
 
-bt = open(os.getcwd() + "../config/BaseTypes.txt")
+bt = open("../config/BaseTypes.txt")
 BaseTypes = bt.readline().split(' ')
 bt.close()
 
-cc = open(os.getcwd() + "../config/ConversionChart.txt")
+cc = open("../config/ConversionChart.txt")
 CleanedCC = RemoveParagraphs(cc.readlines())
 ConversionChart = []
 for Rule in CleanedCC:
@@ -33,7 +35,7 @@ for Rule in CleanedCC:
 ConversionChart = np.array(ConversionChart)
 cc.close()
 
-jt = open(os.getcwd() + "../config/MatchJsonTypes.txt")
+jt = open("../config/MatchJsonTypes.txt")
 CleanedJT = RemoveParagraphs(jt.readlines())
 JsonTypes = []
 for Match in CleanedJT:
@@ -89,7 +91,7 @@ def GenIncludes(Variables):
     IncludeList = ["#pragma once\n\n", "#include ROSBridgeMsg.h\n\n"]
     for Variable in Variables:
         if(not(Variable[1] in BaseTypes or Variable[1] in ConversionChart[:,1])):
-            IncludeList.append('#include "' + Variable[1] + '.h"\n')       
+            IncludeList.append('#include "' + Variable[1].replace('::', '/') + '.h"\n')       
     return IncludeList
 
 
@@ -134,8 +136,8 @@ def GenConstructors(Variables, ClassName, FullPath):
         if(Variable[2] == True):
             Constructors.append('\tconst TArray<' + Variable[1] + '>& In' + Variable[0] + ',\n')
         else:
-            Constructors.append('\t'+ Variable[1] + ' In' + Variable[0] + '\n')
-
+            Constructors.append('\t'+ Variable[1] + ' In' + Variable[0] + ',\n')
+    Constructors[-1] = Constructors[-1].replace(',', '')
     Constructors.append('):\n')
 
     for Variable in Variables:
@@ -143,7 +145,7 @@ def GenConstructors(Variables, ClassName, FullPath):
             Constructors.append('\t' + Variable[0] + '(In' + Variable[0] + ' = ' + Variable[5] +'),\n')
         else:
             Constructors.append('\t' + Variable[0] + '(In' + Variable[0] + '),\n')
-        
+    Constructors[-1] = Constructors[-1].replace(',', '')
     Constructors.append('{\n')
     Constructors.append('\tMsgType = "' + FullPath.split('.')[0] + '";\n')
     Constructors.append('}\n\n')
@@ -227,7 +229,7 @@ def GenToJsonObject(Variables):
             ToJsonObject.append('\tTArray<TSharedPtr<FJsonValue>> ' + Variable[0] + 'Array;\n')
             ToJsonObject.append('\tfor (auto &val : ' + Variable[0] + ')\n')
             ToJsonObject.append('\t\t' + Variable[0] + 'Array.Add(MakeShareable(new FJsonValue' + Variable[3][:-5] + '(val)));\n')
-            ToJsonObject.append('\tObject->SetArrayField(TEXT("' + Variable[0].lower() + '"), ' + Variable[0] + ');\n' )
+            ToJsonObject.append('\tObject->SetArrayField(TEXT("' + Variable[0].lower() + '"), ' + Variable[0] + 'Array);\n' )
         else:
             if(Variable[3] == 'ObjectField'):
                 ToJsonObject.append('\tObject->SetObjectField(TEXT("' + Variable[0].lower() + '"), ' + Variable[0] + '.ToJsonObject());\n')
@@ -249,18 +251,23 @@ def GenToYamlString():
     ToYamlString.append('}\n')
     return Indent(ToYamlString, 2)
 
-for root, dirs, files in os.walk('C:/Users/Frederick Hastedt/Dokumente/Python/MsgGeneration/templates'):
+root = tk.Tk()
+root.withdraw()
+dirname = filedialog.askdirectory(initialdir='../templates/', title ='Please select where your templates are located.')
+
+for root, dirs, files in os.walk(dirname):
     for filename in files:
         if(filename[-3:] == 'txt'):
             FullPath = os.path.join(root, filename)
-            FullPath.replace(os.getcwd(), ' ')
-            print(os.getcwd())
-            print(FullPath)
+            FullPath = FullPath.replace('\\', '/')
             MsgFile = open(FullPath)
             MsgContent = MsgFile.readlines()
             MsgContent = RemoveParagraphs(MsgContent)
             MsgName = MsgFile.name.split('.')[0].split('/')[-1]
+            print(MsgName)
             MsgFileName = MsgFile.name
+            MsgFileName = MsgFileName.replace(dirname + '/', '')
+            print(MsgFileName)
             MsgFile.close()
             Variables = MakeReadableArray(MsgContent)
 
@@ -280,7 +287,7 @@ for root, dirs, files in os.walk('C:/Users/Frederick Hastedt/Dokumente/Python/Ms
             OutputArray.append(Indent(['};\n'], 1))
             OutputArray.append(['}'])
 
-            Output = open(MsgFileName.split('.')[0] + '.h', 'w')
+            Output = open(dirname + '/' + MsgFileName.split('.')[0] + '.h', 'w')
 
             for Block in OutputArray:
                 Output.writelines(Block)
