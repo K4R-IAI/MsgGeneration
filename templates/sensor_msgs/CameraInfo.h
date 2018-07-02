@@ -175,7 +175,7 @@ namespace sensor_msgs
 
 			Width = JsonObject->GetNumberField(TEXT("width"));
 
-			DistortionModel = JsonObject->GetStringField(TEXT("distortionmodel"));
+			DistortionModel = JsonObject->GetStringField(TEXT("distortion_model"));
 
 			TArray<TSharedPtr<FJsonValue>> ValuesPtrArr;
 
@@ -199,9 +199,9 @@ namespace sensor_msgs
 			for (auto &ptr : ValuesPtrArr)
 				P.Add(ptr->AsNumber());
 
-			BinningX = JsonObject->GetNumberField(TEXT("binningx"));
+			BinningX = JsonObject->GetNumberField(TEXT("binning_x"));
 
-			BinningY = JsonObject->GetNumberField(TEXT("binningy"));
+			BinningY = JsonObject->GetNumberField(TEXT("binning_y"));
 
 			ROI = sensor_msgs::RegionOfInterest::GetFromJson(JsonObject->GetObjectField(TEXT("roi")));
 
@@ -221,7 +221,7 @@ namespace sensor_msgs
 			Object->SetObjectField(TEXT("header"), Header.ToJsonObject());
 			Object->SetNumberField(TEXT("height"), Height);
 			Object->SetNumberField(TEXT("width"), Width);
-			Object->SetStringField(TEXT("distortionmodel"), DistortionModel);
+			Object->SetStringField(TEXT("distortion_model"), DistortionModel);
 			TArray<TSharedPtr<FJsonValue>> DArray;
 			for (auto &val : D)
 				DArray.Add(MakeShareable(new FJsonValueNumber(val)));
@@ -238,8 +238,8 @@ namespace sensor_msgs
 			for (auto &val : P)
 				PArray.Add(MakeShareable(new FJsonValueNumber(val)));
 			Object->SetArrayField(TEXT("p"), PArray);
-			Object->SetNumberField(TEXT("binningx"), BinningX);
-			Object->SetNumberField(TEXT("binningy"), BinningY);
+			Object->SetNumberField(TEXT("binning_x"), BinningX);
+			Object->SetNumberField(TEXT("binning_y"), BinningY);
 			Object->SetObjectField(TEXT("roi"), ROI.ToJsonObject());
 			return Object;
 		}

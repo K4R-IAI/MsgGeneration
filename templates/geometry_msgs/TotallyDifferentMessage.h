@@ -11,7 +11,7 @@ namespace geometry_msgs
 	{
 		std_msgs::String MyString;
 		TArray<FString> MyOtherString;
-		uint32 SomeNumber = 10;
+		uint32 SomeNumber;
 		sensor_msgs::RegionOfInterest ROI;
 	public:
 		TotallyDifferentMessage()
@@ -28,7 +28,7 @@ namespace geometry_msgs
 		):
 			MyString(InMyString),
 			MyOtherString(InMyOtherString),
-			SomeNumber(InSomeNumber = 10),
+			SomeNumber(InSomeNumber),
 			ROI(InROI)
 		{
 			MsgType = "geometry_msgs/TotallyDifferentMessage";

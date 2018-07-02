@@ -3,6 +3,52 @@ import os
 import tkinter as tk
 from tkinter import filedialog
 
+class Variable:
+    def ConvertName(self, OriginalName):
+        ConvertedName = OriginalName.replace('_', ' ').title().replace(' ', '')
+        return ConvertedName
+
+    def __init__(self):
+        self._OriginalName = ''
+        self._Name = ''
+        self._Type = ''
+        self._IsArray = False
+        self._JsonType = ''
+        self._HasDefault = False
+        self._DefaultValue = ''
+
+    def SetOriginalName(self, OriginalName):
+        self._OriginalName = OriginalName.lower()
+        if(OriginalName.count('_') >= 1):
+            self._Name = self.ConvertName(OriginalName)
+        else:
+            self._Name = OriginalName
+    def SetType(self, Type):
+        self._Type = Type
+    def SetIsArray(self, IsArray):
+        self._IsArray = IsArray
+    def SetJsonType(self, JsonType):
+        self._JsonType = JsonType
+    def SetHasDefault(self, HasDefault):
+        self._HasDefault = HasDefault
+    def SetDefaultValue(self, DefaultValue):
+        self._DefaultValue = DefaultValue
+
+    def GetName(self):
+        return self._Name
+    def GetOriginalName(self):
+        return self._OriginalName
+    def GetType(self):
+        return self._Type
+    def IsArray(self):
+        return self._IsArray
+    def GetJsonType(self):
+        return self._JsonType
+    def HasDefault(self):
+        return self._HasDefault
+    def GetDefaultValue(self):
+        return self._DefaultValue
+
 def RemoveParagraphs(RawDocument):
     CleanedArray = []
     for Element in RawDocument:
@@ -45,43 +91,44 @@ jt.close()
 
 
 
-def MakeReadableArray(MsgContent):
+def MakeVariableArray(MsgContent):
     # Layout for readable array: VariableName, VariableType, Variable IsArray, JsonType, VariableHasDefault, VariableDefault
     OutArray = []
     for i in range(0, len(MsgContent)):
         SplitLine = MsgContent[i].split(' ')
-        NewVariable = [0,0,0,0,0]
-        if(SplitLine[1].count('=') >= 1):
-            NewVariable[4] = True
-            NewVariable.append(SplitLine[1].split('=')[-1])
-            NewVariable[0] = SplitLine[1].split('=')[0]
+        NewVariable = Variable()
+        
+        if(SplitLine[1].count('=') >= 1): 
+            NewVariable.SetHasDefault = True
+            NewVariable.SetDefaultValue(SplitLine[1].split('=')[-1])
+            NewVariable.SetOriginalName(SplitLine[1].split('=')[0])
         else:
-            NewVariable[4] = False
-            NewVariable[0] = SplitLine[1]
+            NewVariable.SetHasDefault(False)
+            NewVariable.SetOriginalName(SplitLine[1])
 
         if(SplitLine[0][-2:] == '[]'):
-            NewVariable[2] = True
+            NewVariable.SetIsArray(True)
             if(SplitLine[0][:-2] in ConversionChart[:,0]):
                 LocalCC = ConversionChart[:,0].tolist()
-                NewVariable[1] = ConversionChart[LocalCC.index(SplitLine[0][:-2])][1]
+                NewVariable.SetType( ConversionChart[LocalCC.index(SplitLine[0][:-2])][1] )
             elif(SplitLine[0][:-2] not in BaseTypes):
-                NewVariable[1] = SplitLine[0][:-2].replace('/','::')
+                NewVariable.SetType( SplitLine[0][:-2].replace('/','::') )
             else:
-                NewVariable[1] = SplitLine[0][:-2]
+                NewVariable.SetType( SplitLine[0][:-2] )
         else:
-            NewVariable[2] = False
+            NewVariable.SetIsArray(False)
             if(SplitLine[0] in ConversionChart[:,0]):
                 LocalCC = ConversionChart[:,0].tolist()
-                NewVariable[1] = ConversionChart[LocalCC.index(SplitLine[0])][1]
+                NewVariable.SetType( ConversionChart[LocalCC.index(SplitLine[0])][1] )
             elif(SplitLine[0] not in BaseTypes):
-                NewVariable[1] = SplitLine[0].replace('/','::')
+                NewVariable.SetType( SplitLine[0].replace('/','::') )
             else:
-                NewVariable[1] = SplitLine[0]
-        if(NewVariable[1] in JsonTypes[:,0]):
+                NewVariable.SetType( SplitLine[0] )
+        if(NewVariable.GetType() in JsonTypes[:,0]):
             LocalJT = JsonTypes[:,0].tolist()
-            NewVariable[3] = JsonTypes[LocalJT.index(NewVariable[1])][1]
+            NewVariable.SetJsonType( JsonTypes[LocalJT.index(NewVariable.GetType())][1] )
         else:
-            NewVariable[3] = 'ObjectField'
+            NewVariable.SetJsonType( 'ObjectField' )
         OutArray.append(NewVariable)
     return OutArray
         
@@ -90,8 +137,8 @@ def MakeReadableArray(MsgContent):
 def GenIncludes(Variables):
     IncludeList = ["#pragma once\n\n", "#include ROSBridgeMsg.h\n\n"]
     for Variable in Variables:
-        if(not(Variable[1] in BaseTypes or Variable[1] in ConversionChart[:,1])):
-            IncludeList.append('#include "' + Variable[1].replace('::', '/') + '.h"\n')       
+        if(not(Variable.GetType() in BaseTypes or Variable.GetType() in ConversionChart[:,1])):
+            IncludeList.append('#include "' + Variable.GetType().replace('::', '/') + '.h"\n')       
     return IncludeList
 
 
@@ -116,13 +163,13 @@ def GenPrivateVariables(Variables):
     PrivateVariables = []  
     for Variable in Variables: 
         Line = ''
-        if(Variable[2] == True):
-            Line = Line + 'TArray<' + Variable[1] + '> '
+        if(Variable.IsArray()):
+            Line = Line + 'TArray<' + Variable.GetType() + '> '
         else:
-            Line = Line + Variable[1] + ' '
-        Line = Line + Variable[0]
-        if(Variable[4] == True):
-            Line = Line + ' = ' + Variable[5]
+            Line = Line + Variable.GetType() + ' '
+        Line = Line + Variable.GetName()
+        if(Variable.HasDefault()):
+            Line = Line + ' = ' + Variable.GetDefaultValue()
         Line = Line + ';\n'
         PrivateVariables.append(Line)
 
@@ -138,18 +185,18 @@ def GenConstructors(Variables, ClassName, FullPath):
     Constructors.append(ClassName + '\n')
     Constructors.append('(\n')
     for Variable in Variables:
-        if(Variable[2] == True):
-            Constructors.append('\tconst TArray<' + Variable[1] + '>& In' + Variable[0] + ',\n')
+        if(Variable.IsArray()):
+            Constructors.append('\tconst TArray<' + Variable.GetType() + '>& In' + Variable.GetName() + ',\n')
         else:
-            Constructors.append('\t'+ Variable[1] + ' In' + Variable[0] + ',\n')
+            Constructors.append('\t'+ Variable.GetType() + ' In' + Variable.GetName() + ',\n')
     Constructors[-1] = Constructors[-1].replace(',', '')
     Constructors.append('):\n')
 
     for Variable in Variables:
-        if(Variable[4] == True):
-            Constructors.append('\t' + Variable[0] + '(In' + Variable[0] + ' = ' + Variable[5] +'),\n')
+        if(Variable.HasDefault()):
+            Constructors.append('\t' + Variable.GetName() + '(In' + Variable.GetName() + ' = ' + Variable.GetDefaultValue() +'),\n')
         else:
-            Constructors.append('\t' + Variable[0] + '(In' + Variable[0] + '),\n')
+            Constructors.append('\t' + Variable.GetName() + '(In' + Variable.GetName() + '),\n')
     Constructors[-1] = Constructors[-1].replace(',', '')
     Constructors.append('{\n')
     Constructors.append('\tMsgType = "' + FullPath.split('.')[0] + '";\n')
@@ -163,22 +210,22 @@ def GenGettersAndSetters(Variables):
     GettersAndSetters = []
     # Getters
     for Variable in Variables:
-        if(Variable[2] == True):
-            GettersAndSetters.append('TArray<' + Variable[1] + '> Get' + Variable[0] + '() const\n')
+        if(Variable.IsArray()):
+            GettersAndSetters.append('TArray<' + Variable.GetType() + '> Get' + Variable.GetName() + '() const\n')
         else:
-            GettersAndSetters.append(Variable[1] + ' Get' + Variable[0] + '() const\n')
+            GettersAndSetters.append(Variable.GetType() + ' Get' + Variable.GetName() + '() const\n')
         GettersAndSetters.append('}\n')
-        GettersAndSetters.append('\treturn ' + Variable[0] + ';\n')
+        GettersAndSetters.append('\treturn ' + Variable.GetName() + ';\n')
         GettersAndSetters.append('}\n\n')
 
     # Setters
     for Variable in Variables:
-        if(Variable[2] == True):
-            GettersAndSetters.append('void Set' + Variable[0] + '(TArray<' + Variable[1] + '>& In' + Variable[0] + ')\n')
+        if(Variable.IsArray()):
+            GettersAndSetters.append('void Set' + Variable.GetName() + '(TArray<' + Variable.GetType() + '>& In' + Variable.GetName() + ')\n')
         else:
-            GettersAndSetters.append('void Set' + Variable[0] + '(' + Variable[1] + ' In' + Variable[0] + ')\n')
+            GettersAndSetters.append('void Set' + Variable.GetName() + '(' + Variable.GetType() + ' In' + Variable.GetName() + ')\n')
         GettersAndSetters.append('}\n')
-        GettersAndSetters.append('\t' + Variable[0] + ' = In' + Variable[0] + ';\n')
+        GettersAndSetters.append('\t' + Variable.GetName() + ' = In' + Variable.GetName() + ';\n')
         GettersAndSetters.append('}\n\n')
 
     return Indent(GettersAndSetters,2)
@@ -191,22 +238,22 @@ def GenFromJson(Variables):
     ArrayFlag = False
 
     for Variable in Variables:
-        if(Variable[2] == False):
-            if(Variable[3] == 'ObjectField'):
-                FromJson.append('\t' + Variable[0] + ' = ' + Variable[1] + '::GetFromJson(JsonObject->GetObjectField(TEXT("' + Variable[0].lower() + '")));\n\n')
+        if(not Variable.IsArray()):
+            if(Variable.GetJsonType() == 'ObjectField'):
+                FromJson.append('\t' + Variable.GetName() + ' = ' + Variable.GetType() + '::GetFromJson(JsonObject->GetObjectField(TEXT("' + Variable.GetOriginalName() + '")));\n\n')
             else:
-                FromJson.append('\t' + Variable[0] + ' = JsonObject->Get' + Variable[3] + '(TEXT("' + Variable[0].lower() + '"));\n\n')
+                FromJson.append('\t' + Variable.GetName() + ' = JsonObject->Get' + Variable.GetJsonType() + '(TEXT("' + Variable.GetOriginalName() + '"));\n\n')
         else:
             if(not ArrayFlag):
                 FromJson.append('\t' + 'TArray<TSharedPtr<FJsonValue>> ValuesPtrArr;\n\n')
                 ArrayFlag = True   
-            FromJson.append('\t' + Variable[0] + '.Empty();\n')
-            FromJson.append('\t' + 'ValuesPtrArr = JsonObject->GetArrayField(TEXT("' + Variable[0].lower() + '"));\n')
+            FromJson.append('\t' + Variable.GetName() + '.Empty();\n')
+            FromJson.append('\t' + 'ValuesPtrArr = JsonObject->GetArrayField(TEXT("' + Variable.GetOriginalName() + '"));\n')
             FromJson.append('\t' + 'for (auto &ptr : ValuesPtrArr)\n')
-            if(Variable[3] == 'ObjectField'):
-                FromJson.append('\t' + '\t' + Variable[0] + '.Add(' + Variable[1] + '::GetFromJson(ptr->AsObject()));\n\n')
+            if(Variable.GetJsonType() == 'ObjectField'):
+                FromJson.append('\t' + '\t' + Variable.GetName() + '.Add(' + Variable.GetType() + '::GetFromJson(ptr->AsObject()));\n\n')
             else:
-                FromJson.append('\t' + '\t' + Variable[0] + '.Add(ptr->As' + Variable[3][:-5] + '());\n\n')
+                FromJson.append('\t' + '\t' + Variable.GetName() + '.Add(ptr->As' + Variable.GetJsonType()[:-5] + '());\n\n')
 
     FromJson.append('}\n\n')
             
@@ -230,16 +277,16 @@ def GenToJsonObject(Variables):
     ToJsonObject.append('\tTSharedPtr<FJsonObject> Object = MakeShareable<FJsonObject>(new FJsonObject());\n\n')
 
     for Variable in Variables:
-        if(Variable[2] == True):
-            ToJsonObject.append('\tTArray<TSharedPtr<FJsonValue>> ' + Variable[0] + 'Array;\n')
-            ToJsonObject.append('\tfor (auto &val : ' + Variable[0] + ')\n')
-            ToJsonObject.append('\t\t' + Variable[0] + 'Array.Add(MakeShareable(new FJsonValue' + Variable[3][:-5] + '(val)));\n')
-            ToJsonObject.append('\tObject->SetArrayField(TEXT("' + Variable[0].lower() + '"), ' + Variable[0] + 'Array);\n' )
+        if(Variable.IsArray()):
+            ToJsonObject.append('\tTArray<TSharedPtr<FJsonValue>> ' + Variable.GetName() + 'Array;\n')
+            ToJsonObject.append('\tfor (auto &val : ' + Variable.GetName() + ')\n')
+            ToJsonObject.append('\t\t' + Variable.GetName() + 'Array.Add(MakeShareable(new FJsonValue' + Variable.GetJsonType()[:-5] + '(val)));\n')
+            ToJsonObject.append('\tObject->SetArrayField(TEXT("' + Variable.GetName().lower() + '"), ' + Variable.GetName() + 'Array);\n' )
         else:
-            if(Variable[3] == 'ObjectField'):
-                ToJsonObject.append('\tObject->SetObjectField(TEXT("' + Variable[0].lower() + '"), ' + Variable[0] + '.ToJsonObject());\n')
+            if(Variable.GetJsonType() == 'ObjectField'):
+                ToJsonObject.append('\tObject->SetObjectField(TEXT("' + Variable.GetOriginalName() + '"), ' + Variable.GetName() + '.ToJsonObject());\n')
             else:
-                ToJsonObject.append('\tObject->Set' + Variable[3] + '(TEXT("' + Variable[0].lower() + '"), ' + Variable[0] + ');\n')
+                ToJsonObject.append('\tObject->Set' + Variable.GetJsonType() + '(TEXT("' + Variable.GetOriginalName() + '"), ' + Variable.GetName() + ');\n')
 
     ToJsonObject.append('\treturn Object;\n')
     ToJsonObject.append('}\n')
@@ -262,7 +309,7 @@ dirname = filedialog.askdirectory(initialdir='../templates/', title ='Please sel
 
 for root, dirs, files in os.walk(dirname):
     for filename in files:
-        if(filename[-3:] == 'txt'):
+        if(filename[-3:] == 'msg'):
             FullPath = os.path.join(root, filename)
             FullPath = FullPath.replace('\\', '/')
             MsgFile = open(FullPath)
@@ -272,7 +319,7 @@ for root, dirs, files in os.walk(dirname):
             MsgFileName = MsgFile.name
             MsgFileName = MsgFileName.replace(dirname + '/', '')
             MsgFile.close()
-            Variables = MakeReadableArray(MsgContent)
+            Variables = MakeVariableArray(MsgContent)
 
             OutputArray = []
 
