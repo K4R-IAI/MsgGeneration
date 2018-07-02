@@ -96,7 +96,10 @@ def MakeVariableArray(MsgContent):
     # Layout for readable array: VariableName, VariableType, Variable IsArray, JsonType, VariableHasDefault, VariableDefault
     OutArray = []
     for i in range(0, len(MsgContent)):
-        SplitLine = MsgContent[i].split(' ')
+        if(MsgContent[i].count('#') >= 1):  
+            SplitLine = MsgContent[i].split('#')[0].rstrip().split(' ')
+        else:
+            SplitLine = MsgContent[i].rstrip().split(' ')
         NewVariable = Variable()
         
         if(SplitLine[1].count('=') >= 1): 
@@ -323,7 +326,7 @@ else:
     parser.error('A path needs to be specified. Use the -p option to specify a path or see --help for other options.')
 
 if(not args.msgfolder):
-    msgdir = os.path.join(dirname, 'msg')
+    msgdir = os.path.join(dirname, 'msg').replace('/','\\')
 else:
     msgdir = dirname
 
@@ -358,7 +361,10 @@ for file in os.listdir(msgdir):
         OutputArray.append(Indent(['};\n'], 1))
         OutputArray.append(['}'])
 
-        Output = open(msgdir + '/' + MsgName + '.h', 'w')
+        if(not os.path.isdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/'+ PackageName )):
+            os.mkdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/')
+            os.mkdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName)
+        Output = open(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName + '/' + MsgName + '.h', 'w')
 
         for Block in OutputArray:
             Output.writelines(Block)
