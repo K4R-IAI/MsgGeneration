@@ -2,6 +2,7 @@ import numpy as np
 import os
 import tkinter as tk
 from tkinter import filedialog
+import argparse as ap
 
 class Variable:
     def ConvertName(self, OriginalName):
@@ -143,11 +144,8 @@ def GenIncludes(Variables):
 
 
 def GenNameSpace(Name):
-    Line = ''
-    for dirs in Name.split('/')[:-1]:
-        Line = Line + dirs + '/'
-    Line = Line[:-1]
-    NameSpace = ['\nnamespace ' + Line + '\n']
+    
+    NameSpace = ['\nnamespace ' + Name + '\n']
     
     NameSpace.append('{\n')
     return NameSpace
@@ -175,11 +173,11 @@ def GenPrivateVariables(Variables):
 
     return Indent(PrivateVariables, 2)
 
-def GenConstructors(Variables, ClassName, FullPath):
+def GenConstructors(Variables, ClassName, Namespace, MsgName):
     Constructors = []
     Constructors.append(ClassName + '()\n')
     Constructors.append('{\n')
-    Constructors.append('\tMsgType = "' + FullPath.split('.')[0] + '";\n')
+    Constructors.append('\tMsgType = "' + Namespace + '/' + MsgName + '";\n')
     Constructors.append('}\n\n')
 
     Constructors.append(ClassName + '\n')
@@ -199,7 +197,7 @@ def GenConstructors(Variables, ClassName, FullPath):
             Constructors.append('\t' + Variable.GetName() + '(In' + Variable.GetName() + '),\n')
     Constructors[-1] = Constructors[-1].replace(',', '')
     Constructors.append('{\n')
-    Constructors.append('\tMsgType = "' + FullPath.split('.')[0] + '";\n')
+    Constructors.append('\tMsgType = "' + Namespace + '/' + MsgName + '";\n')
     Constructors.append('}\n\n')
 
     Constructors.append('~' + ClassName + '() override {}\n\n')
@@ -303,46 +301,69 @@ def GenToYamlString():
     ToYamlString.append('}\n')
     return Indent(ToYamlString, 2)
 
-root = tk.Tk()
-root.withdraw()
-dirname = filedialog.askdirectory(initialdir='../templates/', title ='Please select where your templates are located.')
 
-for root, dirs, files in os.walk(dirname):
-    for filename in files:
-        if(filename[-3:] == 'msg'):
-            FullPath = os.path.join(root, filename)
-            FullPath = FullPath.replace('\\', '/')
-            MsgFile = open(FullPath)
-            MsgContent = MsgFile.readlines()
-            MsgContent = RemoveParagraphs(MsgContent)
-            MsgName = MsgFile.name.split('.')[0].split('/')[-1]
-            MsgFileName = MsgFile.name
-            MsgFileName = MsgFileName.replace(dirname + '/', '')
-            MsgFile.close()
-            Variables = MakeVariableArray(MsgContent)
 
-            OutputArray = []
+parser = ap.ArgumentParser(description='Generates UROSBridge compatible C++ files from msg files in a ROS Package.')
+parser.add_argument('--path', '-p', help='Provide the path to the ROS Package you want to generate the C++ files for.')
+parser.add_argument('--usegui', '-g', action='store_true', help='Use this if you want to open a filedialog to pick your path.')
+parser.add_argument('--msgfolder', '-mf', help='Use this if instead of a ROS Package you are selecting a folder directly containing the .msg files. Requires a namespace to be provided.')
 
-            OutputArray.append(GenIncludes(Variables))
-            OutputArray.append(GenNameSpace(MsgFileName))
-            OutputArray.append(GenClass(MsgName))
-            OutputArray.append(GenPrivateVariables(Variables))
-            OutputArray.append(Indent(['public:\n'], 1))
-            OutputArray.append(GenConstructors(Variables, MsgName, MsgFileName))
-            OutputArray.append(GenGettersAndSetters(Variables))
-            OutputArray.append(GenFromJson(Variables))
-            OutputArray.append(GenGetFromJson(MsgName))
-            OutputArray.append(GenToJsonObject(Variables))
-            OutputArray.append(GenToYamlString())
-            OutputArray.append(Indent(['};\n'], 1))
-            OutputArray.append(['}'])
+args = parser.parse_args()
 
-            Output = open(dirname + '/' + MsgFileName.split('.')[0] + '.h', 'w')
 
-            for Block in OutputArray:
-                Output.writelines(Block)
+if(args.path and not args.usegui):
+    dirname = args.path
+elif(args.usegui and args.path):
+    tk.Tk().withdraw()
+    dirname = filedialog.askdirectory(initialdir=args.path, title ='Please select a ROS Package.')
+elif(args.usegui and not args.path):
+    tk.Tk().withdraw()
+    dirname = filedialog.askdirectory(initialdir=os.path.join(os.path.dirname(__file__), '..'), title ='Please select a ROS Package.')
+else:
+    parser.error('A path needs to be specified. Use the -p option to specify a path or see --help for other options.')
+
+if(not args.msgfolder):
+    msgdir = os.path.join(dirname, 'msg')
+else:
+    msgdir = dirname
+
+for file in os.listdir(msgdir):
+    if(file[-3:] == 'msg'):
+        FullPath = os.path.join(msgdir, file)
+        FullPath = FullPath.replace('\\', '/')
+        MsgFile = open(FullPath)
+        MsgContent = MsgFile.readlines()
+        MsgContent = RemoveParagraphs(MsgContent)
+        MsgName = MsgFile.name.split('.')[0].split('/')[-1]
+        if(args.msgfolder):
+            PackageName = args.msgfolder
+        else:
+            PackageName = os.path.dirname(msgdir).replace(os.path.dirname(os.path.dirname(msgdir)) + '\\', '')
+        MsgFile.close()
+        Variables = MakeVariableArray(MsgContent)
+
+        OutputArray = []
+
+        OutputArray.append(GenIncludes(Variables))
+        OutputArray.append(GenNameSpace(PackageName))
+        OutputArray.append(GenClass(MsgName))
+        OutputArray.append(GenPrivateVariables(Variables))
+        OutputArray.append(Indent(['public:\n'], 1))
+        OutputArray.append(GenConstructors(Variables, MsgName, PackageName, MsgName))
+        OutputArray.append(GenGettersAndSetters(Variables))
+        OutputArray.append(GenFromJson(Variables))
+        OutputArray.append(GenGetFromJson(MsgName))
+        OutputArray.append(GenToJsonObject(Variables))
+        OutputArray.append(GenToYamlString())
+        OutputArray.append(Indent(['};\n'], 1))
+        OutputArray.append(['}'])
+
+        Output = open(msgdir + '/' + MsgName + '.h', 'w')
+
+        for Block in OutputArray:
+            Output.writelines(Block)
             
-            Output.close()
+        Output.close()
 
 
 
