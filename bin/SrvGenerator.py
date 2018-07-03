@@ -273,7 +273,10 @@ def GenToJsonObject(Variables):
         if(Variable.IsArray()):
             ToJsonObject += 'TArray<TSharedPtr<FJsonValue>> ' + Variable.GetName() + 'Array;\n' + '\t' * Indent
             ToJsonObject += 'for (auto &val : ' + Variable.GetName() + ')\n' + '\t' * Indent
-            ToJsonObject += '\t' + Variable.GetName() + 'Array.Add(MakeShareable(new FJsonValue' + Variable.GetJsonType()[:-5] + '(val)));\n'+ '\t' * Indent
+            if(Variable.GetJsonType() == 'ObjectField'):
+                ToJsonObject += '\t' + Variable.GetName() + 'Array.Add(MakeShareable(new FJsonValue' + Variable.GetJsonType()[:-5] + '(val.ToJsonObject())));\n'+ '\t' * Indent
+            else:
+                ToJsonObject += '\t' + Variable.GetName() + 'Array.Add(MakeShareable(new FJsonValue' + Variable.GetJsonType()[:-5] + '(val)));\n'+ '\t' * Indent
             ToJsonObject += 'Object->SetArrayField(TEXT("' + Variable.GetName().lower() + '"), ' + Variable.GetName() + 'Array);\n'
 
         else:
