@@ -1,5 +1,6 @@
 import numpy as np
 import os
+from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog
 import argparse as ap
@@ -63,12 +64,12 @@ def RemoveParagraphs(RawDocument):
 def Indent(Array, Count):
     IndentedArray = []
     IndentString = '\t'*Count
-    
+
     for Index in Array:
         if(not type(Index) is list):
             IndentedArray.append(IndentString + Index)
 
-    return IndentedArray  
+    return IndentedArray
 
 bt = open("../config/BaseTypes.txt")
 BaseTypes = bt.readline().split(' ')
@@ -95,13 +96,13 @@ jt.close()
 def MakeVariableArray(MsgContent):
     OutArray = []
     for i in range(0, len(MsgContent)):
-        if(MsgContent[i].count('#') >= 1):  
+        if(MsgContent[i].count('#') >= 1):
             SplitLine = MsgContent[i].split('#')[0].rstrip().split(' ')
         else:
             SplitLine = MsgContent[i].rstrip().split(' ')
         NewVariable = Variable()
-        
-        if(SplitLine[1].count('=') >= 1): 
+
+        if(SplitLine[1].count('=') >= 1):
             NewVariable.SetHasDefault = True
             NewVariable.SetDefaultValue(SplitLine[1].split('=')[-1])
             NewVariable.SetOriginalName(SplitLine[1].split('=')[0])
@@ -134,21 +135,21 @@ def MakeVariableArray(MsgContent):
             NewVariable.SetJsonType( 'ObjectField' )
         OutArray.append(NewVariable)
     return OutArray
-        
+
 
 
 def GenIncludes(Variables):
-    IncludeList = ["#pragma once\n\n", "#include ROSBridgeMsg.h\n\n"]
+    IncludeList = ["#pragma once\n\n", "#include \"ROSBridgeMsg.h\"\n\n"]
     for Variable in Variables:
         if(not(Variable.GetType() in BaseTypes or Variable.GetType() in ConversionChart[:,1])):
-            IncludeList.append('#include "' + Variable.GetType().replace('::', '/') + '.h"\n')       
+            IncludeList.append('#include "' + Variable.GetType().replace('::', '/') + '.h"\n')
     return IncludeList
 
 
 def GenNameSpace(Name):
-    
+
     NameSpace = ['\nnamespace ' + Name + '\n']
-    
+
     NameSpace.append('{\n')
     return NameSpace
 
@@ -160,8 +161,8 @@ def GenClass(Name):
     return Class
 
 def GenPrivateVariables(Variables):
-    PrivateVariables = []  
-    for Variable in Variables: 
+    PrivateVariables = []
+    for Variable in Variables:
         Line = ''
         if(Variable.IsArray()):
             Line = Line + 'TArray<' + Variable.GetType() + '> '
@@ -246,7 +247,7 @@ def GenFromJson(Variables):
         else:
             if(not ArrayFlag):
                 FromJson.append('\t' + 'TArray<TSharedPtr<FJsonValue>> ValuesPtrArr;\n\n')
-                ArrayFlag = True   
+                ArrayFlag = True
             FromJson.append('\t' + Variable.GetName() + '.Empty();\n')
             FromJson.append('\t' + 'ValuesPtrArr = JsonObject->GetArrayField(TEXT("' + Variable.GetOriginalName() + '"));\n')
             FromJson.append('\t' + 'for (auto &ptr : ValuesPtrArr)\n')
@@ -256,7 +257,7 @@ def GenFromJson(Variables):
                 FromJson.append('\t' + '\t' + Variable.GetName() + '.Add(ptr->As' + Variable.GetJsonType()[:-5] + '());\n\n')
 
     FromJson.append('}\n\n')
-            
+
     return Indent(FromJson, 2)
 
 def GenGetFromJson(ClassName):
@@ -267,7 +268,7 @@ def GenGetFromJson(ClassName):
     GetFromJson.append('\t'+ 'Result.FromJson(JsonObject);\n')
     GetFromJson.append('\t'+ 'return Result;\n')
     GetFromJson.append('}\n\n')
-    
+
     return Indent(GetFromJson, 2)
 
 def GenToJsonObject(Variables):
@@ -327,56 +328,46 @@ elif(args.usegui and not args.path):
 else:
     parser.error('A path needs to be specified. Use the -p option to specify a path or see --help for other options.')
 
+dirname = Path(dirname)
+
 if(not args.msgfolder):
-    msgdir = os.path.join(dirname, 'msg').replace('/','\\')
+    msgdir = dirname / "msg"
 else:
     msgdir = dirname
 
-for file in os.listdir(msgdir):
-    if(file[-3:] == 'msg'):
-        FullPath = os.path.join(msgdir, file)
-        FullPath = FullPath.replace('\\', '/')
-        MsgFile = open(FullPath)
-        MsgContent = MsgFile.readlines()
-        MsgContent = RemoveParagraphs(MsgContent)
-        MsgName = MsgFile.name.split('.')[0].split('/')[-1]
-        if(args.msgfolder):
-            PackageName = args.msgfolder
-        else:
-            PackageName = os.path.dirname(msgdir).replace(os.path.dirname(os.path.dirname(msgdir)) + '\\', '')
-        MsgFile.close()
-        Variables = MakeVariableArray(MsgContent)
 
-        OutputArray = []
+if(msgdir.exists()):
+    for file in list(msgdir.glob('*.msg')):
+        with file.open() as MsgFile:
+            MsgContent = MsgFile.readlines()
+            MsgContent = RemoveParagraphs(MsgContent)
+            MsgName = file.stem
+            if(args.msgfolder):
+                PackageName = args.msgfolder
+            else:
+                PackageName = dirname.name
 
-        OutputArray.append(GenIncludes(Variables))
-        OutputArray.append(GenNameSpace(PackageName))
-        OutputArray.append(GenClass(MsgName))
-        OutputArray.append(GenPrivateVariables(Variables))
-        OutputArray.append(Indent(['public:\n'], 1))
-        OutputArray.append(GenConstructors(Variables, MsgName, PackageName, MsgName))
-        OutputArray.append(GenGettersAndSetters(Variables))
-        OutputArray.append(GenFromJson(Variables))
-        OutputArray.append(GenGetFromJson(MsgName))
-        OutputArray.append(GenToJsonObject(Variables))
-        OutputArray.append(GenToYamlString())
-        OutputArray.append(Indent(['};\n'], 1))
-        OutputArray.append(['}'])
+            Variables = MakeVariableArray(MsgContent)
 
-        if(not os.path.isdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/')):
-            os.mkdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/')
-        if(not os.path.isdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName)):
-            os.mkdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName)
-        if(not os.path.isdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName + '/msg')):
-            os.mkdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName + '/msg/')
-        Output = open(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName + '/msg/' + MsgName + '.h', 'w')
+            OutputArray = []
 
-        for Block in OutputArray:
-            Output.writelines(Block)
-            
-        Output.close()
-
-
-
-
-
+            OutputArray.append(GenIncludes(Variables))
+            OutputArray.append(GenNameSpace(PackageName))
+            OutputArray.append(GenClass(MsgName))
+            OutputArray.append(GenPrivateVariables(Variables))
+            OutputArray.append(Indent(['public:\n'], 1))
+            OutputArray.append(GenConstructors(Variables, MsgName, PackageName, MsgName))
+            OutputArray.append(GenGettersAndSetters(Variables))
+            OutputArray.append(GenFromJson(Variables))
+            OutputArray.append(GenGetFromJson(MsgName))
+            OutputArray.append(GenToJsonObject(Variables))
+            OutputArray.append(GenToYamlString())
+            OutputArray.append(Indent(['};\n'], 1))
+            OutputArray.append(['}'])
+            OutputFile = dirname / (MsgName + '.h')
+            Output = open(str(OutputFile), 'w')
+            for Block in OutputArray:
+                Output.writelines(Block)
+            Output.close()
+else:
+    print("Folder %s does not exist", msgdir)
