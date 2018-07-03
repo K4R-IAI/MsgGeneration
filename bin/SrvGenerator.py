@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import tkinter as tk
+from pathlib import Path
 from tkinter import filedialog
 import argparse as ap
 from string import Template
@@ -309,46 +310,47 @@ elif(args.usegui and not args.path):
 else:
     parser.error('A path needs to be specified. Use the -p option to specify a path or see --help for other options.')
 
+dirpath = Path(dirpath)
+
 if(not args.srvfolder):
-    srvdir = os.path.join(dirpath, 'srv').replace('/','\\')
+    srvdir = dirpath / 'srv'
 else:
     srvdir = dirpath
+    
+if(srvdir.exists()):
+    for file in list(srvdir.glob('*.srv')):
+        with file.open() as SrvFile:
+            # Open a file, save its name and content
+            SrvTemplateContent = SrvFile.readlines()
+            SrvName = file.stem
 
-for file in os.listdir(srvdir):
-    if(file[-3:] == 'srv'):
-        # Open a file, save its name and content and close it
-        SrvTemplate = open(os.path.join(srvdir, file).replace('\\', '/'))
-        SrvTemplateContent = SrvTemplate.readlines()
-        SrvName = SrvTemplate.name.split('.')[0].split('/')[-1]
-        SrvTemplate.close()
+            # Check whether a custom package name was provided
+            if(args.srvfolder):
+                PackageName = args.srvfolder
+            else:
+                PackageName = dirpath.name
 
-        # Check whether a custom package name was provided
-        if(args.srvfolder):
-            PackageName = args.srvfolder
-        else:
-            PackageName = os.path.dirname(srvdir).replace(os.path.dirname(os.path.dirname(srvdir)) + '\\', '')
+            # Remove all \n from the contents of the service template
+            SrvTemplateContent = RemoveParagraphs(SrvTemplateContent)
 
-        # Remove all \n from the contents of the service template
-        SrvTemplateContent = RemoveParagraphs(SrvTemplateContent)
+            # Create variable Arrays for Request and Response Variables
+            ReqVariables = MakeVariableArray(SrvTemplateContent[:SrvTemplateContent.index('---')])
+            ResVariables = MakeVariableArray(SrvTemplateContent[SrvTemplateContent.index('---')+1:])
 
-        ReqVariables = MakeVariableArray(SrvTemplateContent[:SrvTemplateContent.index('---')])
-        ResVariables = MakeVariableArray(SrvTemplateContent[SrvTemplateContent.index('---')+1:])
+            # Write the content to the C++ Template provided in the Template folder
+            MainDocument = Template(MainDocument.safe_substitute(packagename=PackageName, srvname=SrvName))
+            MainDocument = Template(MainDocument.safe_substitute(reqprivatevariables=GenPrivateVariables(ReqVariables), reqconstructor=GenConstructor(ReqVariables), reqsetters=GenSetters(ReqVariables), reqgetters=GenGetters(ReqVariables),reqfromjson=GenFromJson(ReqVariables), reqtojsonobject=GenToJsonObject(ReqVariables)))
+            MainDocument = MainDocument.safe_substitute(resprivatevariables=GenPrivateVariables(ResVariables), resconstructor=GenConstructor(ResVariables), ressetters=GenSetters(ResVariables), resgetters=GenGetters(ResVariables),resfromjson=GenFromJson(ResVariables), restojsonobject=GenToJsonObject(ResVariables))
 
-        # Write the content to the C++ Template provided in the Template folder
-        MainDocument = Template(MainDocument.safe_substitute(packagename=PackageName, srvname=SrvName))
-        MainDocument = Template(MainDocument.safe_substitute(reqprivatevariables=GenPrivateVariables(ReqVariables), reqconstructor=GenConstructor(ReqVariables), reqsetters=GenSetters(ReqVariables), reqgetters=GenGetters(ReqVariables),reqfromjson=GenFromJson(ReqVariables), reqtojsonobject=GenToJsonObject(ReqVariables)))
-        MainDocument = MainDocument.safe_substitute(resprivatevariables=GenPrivateVariables(ResVariables), resconstructor=GenConstructor(ResVariables), ressetters=GenSetters(ResVariables), resgetters=GenGetters(ResVariables),resfromjson=GenFromJson(ResVariables), restojsonobject=GenToJsonObject(ResVariables))
 
-        if(not os.path.isdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/')):
-            os.mkdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/')
-        if(not os.path.isdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName)):
-            os.mkdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName)
-        if(not os.path.isdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName + '/srv')):
-            os.mkdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName + '/srv/')
-        Output = open(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName + '/srv/' + SrvName + '.h', 'w')
-
-        Output.write(MainDocument)
+            OutputPath = dirpath / PackageName
+            OutputPath.mkdir(exist_ok=True)
             
-        Output.close()
-
-
+            OutputFile = OutputPath / (SrvName + '.h')
+            Output = open(str(OutputFile),'w')
+            
+            Output.write(MainDocument)
+            
+            Output.close()
+else:
+    print("Folder %s does not exist", srvdir)

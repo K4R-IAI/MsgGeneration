@@ -318,22 +318,22 @@ args = parser.parse_args()
 
 
 if(args.path and not args.usegui):
-    dirname = args.path
+    dirpath = args.path
 elif(args.usegui and args.path):
     tk.Tk().withdraw()
-    dirname = filedialog.askdirectory(initialdir=args.path, title ='Please select a ROS Package.')
+    dirpath = filedialog.askdirectory(initialdir=args.path, title ='Please select a ROS Package.')
 elif(args.usegui and not args.path):
     tk.Tk().withdraw()
-    dirname = filedialog.askdirectory(initialdir=os.path.join(os.path.dirname(__file__), '..'), title ='Please select a ROS Package.')
+    dirpath = filedialog.askdirectory(initialdir=os.path.join(os.path.dirname(__file__), '..'), title ='Please select a ROS Package.')
 else:
     parser.error('A path needs to be specified. Use the -p option to specify a path or see --help for other options.')
 
-dirname = Path(dirname)
+dirpath = Path(dirpath)
 
 if(not args.msgfolder):
-    msgdir = dirname / "msg"
+    msgdir = dirpath / "msg"
 else:
-    msgdir = dirname
+    msgdir = dirpath
 
 
 if(msgdir.exists()):
@@ -345,7 +345,7 @@ if(msgdir.exists()):
             if(args.msgfolder):
                 PackageName = args.msgfolder
             else:
-                PackageName = dirname.name
+                PackageName = dirpath.name
 
             Variables = MakeVariableArray(MsgContent)
 
@@ -364,7 +364,11 @@ if(msgdir.exists()):
             OutputArray.append(GenToYamlString())
             OutputArray.append(Indent(['};\n'], 1))
             OutputArray.append(['}'])
-            OutputFile = dirname / (MsgName + '.h')
+
+            OutputPath = dirpath / PackageName
+            OutputPath.mkdir(exist_ok=True)
+            
+            OutputFile = OutputPath / (MsgName + '.h')
             Output = open(str(OutputFile), 'w')
             for Block in OutputArray:
                 Output.writelines(Block)
