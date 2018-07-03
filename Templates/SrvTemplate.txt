@@ -1,0 +1,90 @@
+#pragma once
+
+#include "ROSBridgeSrv.h"
+
+namespace $packagename
+{
+	class $srvname : public FROSBridgeSrv
+	{
+	public:
+		$srvname()
+		{
+			SrvType = TEXT("$packagename/$srvname");
+		}
+
+		class Request : public SrvRequest
+		{
+		private:
+			$reqprivatevariables
+					
+		public:
+			Request(){ }
+			$reqconstructor
+			
+			
+			$reqgetters
+			
+			
+			$reqsetters
+			
+			
+			virtual void FromJson(TSharedPtr<FJsonObject> JsonObject) override
+			{
+				$reqfromjson
+			}
+			
+			static Request GetFromJson(TSharedPtr<FJsonObject> JsonObject)
+			{
+				Request Req;
+				Req.FromJson(JsonObject);
+				return Req;
+			}
+			
+//			### TOSTRING ###
+			
+			virtual TSharedPtr<FJsonObject> ToJsonObject() const
+			{
+				$reqtojsonobject
+			}
+		};
+		
+		class Response : public SrvResponse
+		{
+		private:
+			$resprivatevariables
+			
+			
+		public:
+			Response(){ }
+			$resconstructor
+			
+			
+			$resgetters
+			
+			
+			$ressetters
+			
+			
+			virtual void FromJson(TSharedPtr<FJsonObject> JsonObject) override
+			{
+				$resfromjson
+			}
+			
+			static Response GetFromJson(TSharedPtr<FJsonObject> JsonObject)
+			{
+				Response Resp; 
+				Resp.FromJson(JsonObject);
+				return Resp;
+			}			
+			
+//			### TOSTRING ###
+			
+			virtual TSharedPtr<FJsonObject> ToJsonObject() const
+			{
+				$restojsonobject
+			}
+		};
+		
+	};
+	
+}

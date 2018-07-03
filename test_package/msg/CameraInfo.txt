@@ -1,0 +1,11 @@
+std_msgs::Header header
+uint32 height
+uint32 width
+string distortion_model
+double[] d
+double[] k
+double[] r
+double[] p
+uint32 binning_x
+uint32 binning_y
+sensor_msgs::RegionOfInterest roi

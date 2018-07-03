@@ -93,7 +93,6 @@ jt.close()
 
 
 def MakeVariableArray(MsgContent):
-    # Layout for readable array: VariableName, VariableType, Variable IsArray, JsonType, VariableHasDefault, VariableDefault
     OutArray = []
     for i in range(0, len(MsgContent)):
         if(MsgContent[i].count('#') >= 1):  
@@ -361,10 +360,13 @@ for file in os.listdir(msgdir):
         OutputArray.append(Indent(['};\n'], 1))
         OutputArray.append(['}'])
 
-        if(not os.path.isdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/'+ PackageName )):
+        if(not os.path.isdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/')):
             os.mkdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/')
+        if(not os.path.isdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName)):
             os.mkdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName)
-        Output = open(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName + '/' + MsgName + '.h', 'w')
+        if(not os.path.isdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName + '/msg')):
+            os.mkdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName + '/msg/')
+        Output = open(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName + '/msg/' + SrvName + '.h', 'w')
 
         for Block in OutputArray:
             Output.writelines(Block)

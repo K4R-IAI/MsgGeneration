@@ -1,4 +1,0 @@
-std_msgs/String MyString
-string[] MyOtherString
-uint32 SomeNumber=10
-sensor_msgs::RegionOfInterest ROI

@@ -1,0 +1,3 @@
+uint8 data
+bool[] my_bool
+int16 more_data=15
