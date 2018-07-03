@@ -366,7 +366,7 @@ for file in os.listdir(msgdir):
             os.mkdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName)
         if(not os.path.isdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName + '/msg')):
             os.mkdir(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName + '/msg/')
-        Output = open(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName + '/msg/' + SrvName + '.h', 'w')
+        Output = open(os.path.dirname(os.path.dirname(__file__)) + '/UROSBridgeFiles/' + PackageName + '/msg/' + MsgName + '.h', 'w')
 
         for Block in OutputArray:
             Output.writelines(Block)
