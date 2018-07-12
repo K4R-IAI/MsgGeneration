@@ -307,71 +307,75 @@ def GenToYamlString():
     ToYamlString.append('}\n')
     return Indent(ToYamlString, 2)
 
+def Main(Package, Name):
+    if(Package.exists()):
+        for file in list(Package.glob('*.msg')):
+            with file.open() as MsgFile:
+                MsgContent = MsgFile.readlines()
+                MsgContent = RemoveParagraphs(MsgContent)
+                MsgName = file.stem
 
+                Variables = MakeVariableArray(MsgContent)
 
-parser = ap.ArgumentParser(description='Generates UROSBridge compatible C++ files from msg files in a ROS Package.')
-parser.add_argument('--path', '-p', help='Provide the path to the ROS Package you want to generate the C++ files for.')
-parser.add_argument('--usegui', '-g', action='store_true', help='Use this if you want to open a filedialog to pick your path.')
-parser.add_argument('--msgfolder', '-mf', help='Use this if instead of a ROS Package you are selecting a folder directly containing the .msg files. Requires a namespace to be provided.')
+                OutputArray = []
 
-args = parser.parse_args()
+                # Write the Output
+                OutputArray.append(GenIncludes(Variables))
+                OutputArray.append(GenNameSpace(Name))
+                OutputArray.append(GenClass(MsgName))
+                OutputArray.append(GenPrivateVariables(Variables))
+                OutputArray.append(Indent(['public:\n'], 1))
+                OutputArray.append(GenConstructors(Variables, MsgName, Name, MsgName))
+                OutputArray.append(GenGettersAndSetters(Variables))
+                OutputArray.append(GenFromJson(Variables))
+                OutputArray.append(GenGetFromJson(MsgName))
+                OutputArray.append(GenToJsonObject(Variables))
+                OutputArray.append(GenToYamlString())
+                OutputArray.append(Indent(['};\n'], 1))
+                OutputArray.append(['}'])
 
+                if(Package.parent.name == Name):
+                    OutputPath = Package / '..' / Name
+                else:
+                    OutputPath = Package / Name
+                OutputPath.mkdir(exist_ok=True)
+                
+                OutputFile = OutputPath / (MsgName + '.h')
+                Output = open(str(OutputFile), 'w')
+                for Block in OutputArray:
+                    Output.writelines(Block)
+                Output.close()
 
-if(args.path and not args.usegui):
-    dirpath = args.path
-elif(args.usegui and args.path):
-    tk.Tk().withdraw()
-    dirpath = filedialog.askdirectory(initialdir=args.path, title ='Please select a ROS Package.')
-elif(args.usegui and not args.path):
-    tk.Tk().withdraw()
-    dirpath = filedialog.askdirectory(initialdir=os.path.join(os.path.dirname(__file__), '..'), title ='Please select a ROS Package.')
-else:
-    parser.error('A path needs to be specified. Use the -p option to specify a path or see --help for other options.')
+    else:
+        print("Folder %s does not exist", Name)
 
-dirpath = Path(dirpath)
+if(__name__ == '__main__'):
+    parser = ap.ArgumentParser(description='Generates UROSBridge compatible C++ files from msg files in a ROS Package.')
+    parser.add_argument('--path', '-p', help='Provide the path to the ROS Package you want to generate the C++ files for.')
+    parser.add_argument('--usegui', '-g', action='store_true', help='Use this if you want to open a filedialog to pick your path.')
+    parser.add_argument('--msgfolder', '-mf', help='Use this if instead of a ROS Package you are selecting a folder directly containing the .msg files. Requires a namespace to be provided.')
 
-if(not args.msgfolder):
-    msgdir = dirpath / "msg"
-else:
-    msgdir = dirpath
+    args = parser.parse_args()
 
+    if(args.path and not args.usegui):
+        dirpath = args.path
+    elif(args.usegui and args.path):
+        tk.Tk().withdraw()
+        dirpath = filedialog.askdirectory(initialdir=args.path, title ='Please select a ROS Package.')
+    elif(args.usegui and not args.path):
+        tk.Tk().withdraw()
+        dirpath = filedialog.askdirectory(initialdir=os.path.join(os.path.dirname(__file__), '..'), title ='Please select a ROS Package.')
+    else:
+        parser.error('A path needs to be specified. Use the -p option to specify a path or see --help for other options.')
 
-if(msgdir.exists()):
-    for file in list(msgdir.glob('*.msg')):
-        with file.open() as MsgFile:
-            MsgContent = MsgFile.readlines()
-            MsgContent = RemoveParagraphs(MsgContent)
-            MsgName = file.stem
-            if(args.msgfolder):
-                PackageName = args.msgfolder
-            else:
-                PackageName = dirpath.name
+    dirpath = Path(dirpath)
 
-            Variables = MakeVariableArray(MsgContent)
+    PackageName = ''
 
-            OutputArray = []
-
-            OutputArray.append(GenIncludes(Variables))
-            OutputArray.append(GenNameSpace(PackageName))
-            OutputArray.append(GenClass(MsgName))
-            OutputArray.append(GenPrivateVariables(Variables))
-            OutputArray.append(Indent(['public:\n'], 1))
-            OutputArray.append(GenConstructors(Variables, MsgName, PackageName, MsgName))
-            OutputArray.append(GenGettersAndSetters(Variables))
-            OutputArray.append(GenFromJson(Variables))
-            OutputArray.append(GenGetFromJson(MsgName))
-            OutputArray.append(GenToJsonObject(Variables))
-            OutputArray.append(GenToYamlString())
-            OutputArray.append(Indent(['};\n'], 1))
-            OutputArray.append(['}'])
-
-            OutputPath = dirpath / PackageName
-            OutputPath.mkdir(exist_ok=True)
-            
-            OutputFile = OutputPath / (MsgName + '.h')
-            Output = open(str(OutputFile), 'w')
-            for Block in OutputArray:
-                Output.writelines(Block)
-            Output.close()
-else:
-    print("Folder %s does not exist", msgdir)
+    if(not args.msgfolder):
+        msgdir = dirpath / "msg"
+        PackageName = dirpath.name
+    else:
+        msgdir = dirpath
+        PackageName = args.msgfolder
+    Main(msgdir, PackageName)
