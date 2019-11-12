@@ -19,11 +19,11 @@ class Variable:
         self._DefaultValue = ''
 
     def SetOriginalName(self, OriginalName):
-        self._OriginalName = OriginalName.title()
+        self._OriginalName = OriginalName
         if(OriginalName.count('_') >= 1):
             self._Name = self.ConvertName(OriginalName)
         else:
-            self._Name = self._OriginalName
+            self._Name = self._OriginalName.title()
 
     def SetType(self, Type):
         self._Type = Type
@@ -159,7 +159,12 @@ class UMsgCodeGenerator:
                             LocalCC = self.ConversionChart[:, 0].tolist()
                             NewVariable.SetType(self.ConversionChart[LocalCC.index(SplitLine[0][:-2])][1])
                         elif(SplitLine[0][:-2] not in self.BaseTypes):
-                            NewVariable.SetType(SplitLine[0][:-2].replace('/', '::'))
+                            if(SplitLine[0].count('/') == 0):
+                                temptype = self.PackageName + "::" + SplitLine[0]
+                                NewVariable.SetType(temptype)
+                                print(temptype)
+                            else:
+                                NewVariable.SetType(SplitLine[0][:-2].replace('/', '::'))
                         else:
                             NewVariable.SetType(SplitLine[0][:-2])
                     else:
@@ -168,7 +173,12 @@ class UMsgCodeGenerator:
                             LocalCC = self.ConversionChart[:, 0].tolist()
                             NewVariable.SetType(self.ConversionChart[LocalCC.index(SplitLine[0])][1])
                         elif(SplitLine[0] not in self.BaseTypes):
-                            NewVariable.SetType(SplitLine[0].replace('/', '::'))
+                            if(SplitLine[0].count('/') == 0):
+                                temptype = self.PackageName + "::" + SplitLine[0]
+                                NewVariable.SetType(temptype)
+                                print(temptype)
+                            else:
+                                NewVariable.SetType(SplitLine[0].replace('/', '::'))
                         else:
                             NewVariable.SetType(SplitLine[0])
                     if(NewVariable.GetType() in self.JsonTypes[:, 0]):
@@ -327,7 +337,7 @@ class UMsgCodeGenerator:
                     ToJsonObject.append('\t\t' + Variable.GetName() + 'Array.Add(MakeShareable(new FJsonValue' + Variable.GetJsonType()[:-5] + '(val.ToJsonObject())));\n')
                 else:
                     ToJsonObject.append('\t\t' + Variable.GetName() + 'Array.Add(MakeShareable(new FJsonValue' + Variable.GetJsonType()[:-5] + '(val)));\n')
-                ToJsonObject.append('\tObject->SetArrayField(TEXT("' + Variable.GetName().lower() + '"), ' + Variable.GetName() + 'Array);\n' )
+                ToJsonObject.append('\tObject->SetArrayField(TEXT("' + Variable.GetOriginalName().lower() + '"), ' + Variable.GetName() + 'Array);\n' )
             else:
                 if(Variable.GetJsonType() == 'ObjectField'):
                     ToJsonObject.append('\tObject->SetObjectField(TEXT("' + Variable.GetOriginalName() + '"), ' + Variable.GetName() + '.ToJsonObject());\n')
@@ -386,47 +396,6 @@ class UMsgCodeGenerator:
 def Main(Package, Name):
     CG = UAllMsgCodeGenerator(Package)
     CG.GenMsgs()
-    # if(Package.exists()):
-    #     for file in list(Package.glob('*.msg')):
-    #         with file.open() as MsgFile:
-    #             MsgContent = MsgFile.readlines()
-    #             MsgContent = RemoveParagraphs(MsgContent)
-    #             MsgName = file.stem
-    #
-    #             CG = UMsgCodeGenerator()
-    #             Variables = CG.MakeVariableArray(MsgContent)
-    #
-    #             OutputArray = []
-    #
-    #             # Write the Output
-    #             OutputArray.append(CG.GenIncludes(Variables))
-    #             OutputArray.append(CG.GenNameSpace(Name))
-    #             OutputArray.append(CG.GenClass(MsgName))
-    #             OutputArray.append(CG.GenPrivateVariables(Variables))
-    #             OutputArray.append(Indent(['public:\n'], 1))
-    #             OutputArray.append(CG.GenConstructors(Variables, MsgName, Name, MsgName))
-    #             OutputArray.append(CG.GenGettersAndSetters(Variables))
-    #             OutputArray.append(CG.GenFromJson(Variables))
-    #             OutputArray.append(CG.GenGetFromJson(MsgName))
-    #             OutputArray.append(CG.GenToJsonObject(Variables))
-    #             OutputArray.append(CG.GenToYamlString())
-    #             OutputArray.append(Indent(['};\n'], 1))
-    #             OutputArray.append(['}'])
-    #
-    #             if(Package.parent.name == Name):
-    #                 OutputPath = Package / '..' / Name
-    #             else:
-    #                 OutputPath = Package / Name
-    #             OutputPath.mkdir(exist_ok=True)
-    #
-    #             OutputFile = OutputPath / (MsgName + '.h')
-    #             Output = open(str(OutputFile), 'w')
-    #             for Block in OutputArray:
-    #                 Output.writelines(Block)
-    #             Output.close()
-
-    # else:
-    #     print("Folder %s does not exist", Name)
 
 if(__name__ == '__main__'):
     try:
